@@ -1,0 +1,43 @@
+WHITESPACE* = WHITESPACE ~ WHITESPACE* | EMPTY
+WHITESPACE+ = WHITESPACE ~ WHITESPACE*
+
+program = instruction | EMPTY
+instruction = statement | assignment | conditional | while | function | function_call | WHITESPACE* | instruction ~ instruction | EMPTY
+
+function_keyword = "function"
+if_keyword = "if"
+else_keyword = "else"
+while_keyword = "while"
+var_keyword = "var"
+return_keyword = "return"
+
+number = ASCII_DIGIT | number ~ number | EMPTY
+float = number ~ "." ~ number
+string = "\"" ~ ANY ~ "\""
+alphanumeric = ASCII_ALPHANUMERIC | alphanumeric ~ alphanumeric | EMPTY
+algebraic_operators = "+" | "-" | "*" | "/"
+logical_operators = "<" | ">" | "==" | "!="
+
+{block} = "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}"
+block = instruction | return_keyword ~ WHITESPACE+ ~ expression ~ ";" | block ~ block | EMPTY
+
+ident = ASCII_ALPHA ~ alphanumeric
+value = number | float | string | function_call | ident
+
+(expression) = "(" ~ expression ~ ")"
+expression = WHITESPACE* ~ value ~ more_expression | WHITESPACE* ~ (expression) ~ more_expression | WHITESPACE* ~ value
+more_expression = WHITESPACE* ~ algebraic_operators ~ expression | WHITESPACE* ~ logical_operators ~ expression
+
+statement = var_keyword ~ WHITESPACE+ ~ ident ~ WHITESPACE* ~ "=" ~ expression ~ ";"
+assignment = ident ~ WHITESPACE* ~ "=" ~ expression ~ ";"
+
+conditional = if_keyword ~ WHITESPACE* ~ (expression) ~ {block} ~ WHITESPACE* ~ else
+else = else_keyword ~ WHITESPACE* ~ {block} | EMPTY
+while = while_keyword ~ WHITESPACE* ~ (expression) ~ {block}
+
+(parameters) = "(" ~ parameters ~ ")"
+parameters = WHITESPACE* ~ ident ~ more_parameters | EMPTY
+more_parameters = WHITESPACE* ~ "," ~ WHITESPACE* ~ ident ~ more_parameters ~ WHITESPACE* | EMPTY
+
+function = function_keyword ~ WHITESPACE+ ~ ident ~ (parameters) ~ WHITESPACE* ~ {block}
+function_call = ident ~ (parameters) ~ ";"

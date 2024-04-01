@@ -1,0 +1,35 @@
+var a = 10;
+var b = 5 + 4 - 1 * 2;
+var c = a + b;
+var d = (a - b) * c;
+var e = d / 2;
+var f = 1.23 + 2.34;
+var g = "Hello, World!";
+
+function add(a, b) {
+  return a + b;
+}
+
+function subtract(a, b) {
+  return a - b;
+}
+
+if (a > b) {
+  a = a + b;
+}
+
+if (a < b) {
+  a = a - b;
+} else {
+  a = a + b;
+}
+
+if ((a > b) && (a < c)) {
+  a = a + b;
+}
+
+a = add(a, b) + subtract(c, d);
+
+while (a < b) {
+  a = a + 1;
+}

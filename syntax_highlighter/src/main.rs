@@ -17,9 +17,6 @@ lazy_static! {
         });
         map.insert("ANY", |s| s.chars().all(|c| c.is_ascii()));
         map.insert("WHITESPACE", |s| s.chars().all(|c| c.is_whitespace()));
-        map.insert("MAYBE_WHITESPACE", |s| {
-            s.chars().all(|c| c.is_whitespace()) || s.is_empty()
-        });
         map.insert("EMPTY", |s| s.is_empty());
         map
     };
@@ -134,12 +131,12 @@ fn analyzer(initial_rule: &str, grammar: &str, input: &str) -> anyhow::Result<()
     let graph = get_graph(grammar)?;
     validate_graph(initial_rule, &graph)?;
 
-    // for (key, value) in &graph {
-    //     println!("{}: {:?}", key, value);
-    // }
+    for (key, value) in &graph {
+        println!("{}: {:?}", key, value);
+    }
 
-    let mut tokens = Vec::new();
-    lexer(initial_rule, 0, input, &mut tokens, &graph);
+    // let mut tokens = Vec::new();
+    // lexer(initial_rule, 0, input, &mut tokens, &graph);
     // println!("{:?}", tokens);
 
     Ok(())

@@ -2,7 +2,7 @@ WHITESPACE* = WHITESPACE ~ WHITESPACE* | EMPTY
 WHITESPACE+ = WHITESPACE ~ WHITESPACE*
 
 program = instruction*
-instruction = statement | assignment | conditional | while | function | function_call
+instruction = statement | conditional | while | function | assignment | function_call ~ ";"
 instruction* = instruction ~ WHITESPACE* ~ instruction* | EMPTY
 
 function_keyword = "function"
@@ -12,10 +12,11 @@ while_keyword = "while"
 var_keyword = "var"
 return_keyword = "return"
 
+ident = ASCII_ALPHA ~ alphanumeric*
 number = ASCII_DIGIT ~ number*
 number* = ASCII_DIGIT ~ number* | EMPTY
 float = number ~ "." ~ number
-string = "\"" ~ ANY ~ "\""
+string = """ ~ ANY ~ """
 alphanumeric* = ASCII_ALPHANUMERIC ~ alphanumeric* | EMPTY
 algebraic_operators = "+" | "-" | "*" | "/"
 logical_operators = "<" | ">" | "==" | "!="
@@ -24,25 +25,26 @@ logical_operators = "<" | ">" | "==" | "!="
 block = block_instruction ~ WHITESPACE* ~ block | EMPTY
 block_instruction = instruction | return_keyword ~ WHITESPACE+ ~ expression ~ ";"
 
-ident = ASCII_ALPHA ~ alphanumeric*
-value = number | float | string | function_call | ident
+value = float | number | string | function_call | ident
 
-(expression) = "(" ~ expression_with_spaces ~ ")"
-expression_with_spaces = WHITESPACE* ~ expression ~ WHITESPACE*
+(expression) = "(" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ")"
 expression = value ~ WHITESPACE* ~ expression* | (expression) ~ WHITESPACE* ~ expression*
 expression* = algebraic_operators ~ WHITESPACE* ~ expression | logical_operators ~ WHITESPACE* ~ expression | EMPTY
 
-statement = var_keyword ~ WHITESPACE+ ~ ident ~ WHITESPACE* ~ "=" ~ expression_with_spaces ~ ";"
-assignment = ident ~ WHITESPACE* ~ "=" ~ expression_with_spaces ~ ";"
+statement = var_keyword ~ WHITESPACE+ ~ ident ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ";"
+assignment = ident ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ";"
 
-conditional = if_keyword ~ WHITESPACE* ~ (expression) ~ {block} ~ WHITESPACE* ~ else
+conditional = if_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ {block} ~ WHITESPACE* ~ else
 else = else_keyword ~ WHITESPACE* ~ {block} | EMPTY
 while = while_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ {block}
 
-(parameters) = "(" ~ parameters_with_spaces ~ ")"
-parameters_with_spaces = WHITESPACE* ~ parameters ~ WHITESPACE*
-parameters = ident ~ parameters* | EMPTY
-parameters* = WHITESPACE* ~ "," ~ WHITESPACE* ~ ident ~ parameters* | EMPTY
+(parameters) = "(" ~ WHITESPACE* ~ parameters ~ WHITESPACE* ~ ")"
+parameters = ident ~ WHITESPACE* ~ parameters* | EMPTY
+parameters* = "," ~ WHITESPACE* ~ ident ~ parameters* | EMPTY
+
+(arguments) = "(" ~ WHITESPACE* ~ arguments ~ WHITESPACE* ~ ")"
+arguments = expression ~ WHITESPACE* ~ arguments* | EMPTY
+arguments* = "," ~ WHITESPACE* ~ expression ~ arguments* | EMPTY
 
 function = function_keyword ~ WHITESPACE+ ~ ident ~ (parameters) ~ WHITESPACE* ~ {block}
-function_call = ident ~ (parameters) ~ ";"
+function_call = ident ~ (arguments)

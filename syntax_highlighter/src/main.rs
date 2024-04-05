@@ -1,4 +1,4 @@
-use analyzer::Analyzer;
+use analyzer::{Analyzer, Token};
 use std::fs;
 
 mod analyzer;
@@ -9,8 +9,14 @@ fn main() -> anyhow::Result<()> {
     analyzer.validate()?;
 
     let input = fs::read_to_string("src/test.txt")?;
-    let tokens = analyzer.lexer(&input);
-    println!("{:?}", tokens);
+    let response = analyzer.parser(&input);
+
+    analyzer.visit(&response.0, &mut |Token(rule, others)| match *rule {
+        "ident" => {
+            println!("Ident: {}", others.value(&input));
+        }
+        _ => {}
+    });
 
     Ok(())
 }

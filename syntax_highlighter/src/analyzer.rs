@@ -1,6 +1,7 @@
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 
+const ROOT: &'static str = "root";
 const EMPTY: &'static str = "EMPTY";
 const ASCII_DIGIT: &'static str = "ASCII_DIGIT";
 const ASCII_ALPHA: &'static str = "ASCII_ALPHA";
@@ -23,15 +24,34 @@ lazy_static! {
     };
 }
 
+#[derive(Debug, Clone)]
+pub struct Position {
+    pub start: usize,
+    pub end: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum Content<'a> {
+    Children(Position, Vec<Token<'a>>),
+    Atomic(Position),
+}
+
+#[derive(Debug, Clone)]
+pub struct Token<'a>(pub &'a str, pub Content<'a>);
+
 #[derive(Debug)]
-pub struct Token<'a> (pub &'a str, pub &'a str);
+pub struct Error<'a> {
+    pub message: &'a str,
+    pub first: usize,
+    pub last: usize,
+}
 
 #[derive(Debug)]
 pub enum Expression<'a> {
     Keyword(&'a str),
     String(&'a str),
     Rule(&'a str),
-    InternalRule(&'a str)
+    InternalRule(&'a str),
 }
 
 pub struct Analyzer<'a> {
@@ -135,43 +155,81 @@ impl<'a> Analyzer<'a> {
         Ok(())
     }
 
-    pub fn lexer(&self, input: &'a str) -> Vec<Token<'a>> {
-        self.resursive_lexer(self.initial_rule, &mut 0, input)
+    pub fn parser(&self, input: &'a str) -> (Token<'a>, Vec<Error<'a>>) {
+        let mut position = 0;
+        let mut errors = Vec::new();
+        let mut tokens = Vec::new();
+
+        while position < input.len() {
+            let token = self.resursive_parser(self.initial_rule, &mut position, &mut errors, input);
+
+            tokens.push(token);
+            position += 1;
+        }
+
+        (
+            Token(
+                ROOT,
+                Content::Children(
+                    Position {
+                        start: 0,
+                        end: input.len(),
+                    },
+                    tokens,
+                ),
+            ),
+            errors,
+        )
     }
 
-    fn resursive_lexer(
+    fn resursive_parser(
         &self,
         rule: &'a str,
         start: &mut usize,
+        errors: &mut Vec<Error<'a>>,
         input: &'a str,
-    ) -> Vec<Token<'a>> {
+    ) -> Token<'a> {
         let mut tokens = Vec::new();
-        let mut temp_tokens;
-        let mut local_start;
+        let mut candidates = Vec::new();
 
         if let Some(options) = self.grammar.get(rule) {
             'options: for option in options {
-                local_start = *start;
-                temp_tokens = Vec::new();
+                let mut score = 0;
+                let mut local_start = *start;
+                let mut temp_tokens = Vec::new();
 
                 for expression in option {
                     match expression {
                         Expression::String(string) => {
                             if input[local_start..].starts_with(string) {
-                                temp_tokens.push(Token("string", &input[local_start..local_start + string.len()]));
                                 local_start += string.len();
+                                score += 1;
+
+                                temp_tokens.push(Token(
+                                    "string",
+                                    Content::Atomic(Position {
+                                        start: local_start - string.len(),
+                                        end: local_start,
+                                    }),
+                                ));
                             } else {
+                                candidates.push((
+                                    local_start,
+                                    score as f32 / option.len() as f32,
+                                    temp_tokens,
+                                ));
                                 continue 'options;
                             }
                         }
                         Expression::Rule(r) => {
-                            let mut temp = self.resursive_lexer(r, &mut local_start, input);
+                            let temp = self.resursive_parser(r, &mut local_start, errors, input);
 
                             if local_start == *start {
                                 continue 'options;
                             }
 
-                            temp_tokens.append(&mut temp);
+                            score += 1;
+                            temp_tokens.push(temp);
                         }
                         Expression::InternalRule(rule) => {
                             if rule == &EMPTY {
@@ -189,17 +247,36 @@ impl<'a> Analyzer<'a> {
                             }
 
                             if local_start == end {
+                                candidates.push((
+                                    local_start,
+                                    score as f32 / option.len() as f32,
+                                    temp_tokens,
+                                ));
                                 continue 'options;
                             }
 
-                            temp_tokens.push(Token("internal_rule", &input[local_start..end]));
+                            temp_tokens.push(Token(
+                                "internal_rule",
+                                Content::Atomic(Position {
+                                    start: local_start,
+                                    end,
+                                }),
+                            ));
                             local_start = end;
+                            score += 1;
                         }
                         Expression::Keyword(rule) => {
                             if let Expression::String(string) = &self.grammar[rule][0][0] {
                                 if input[local_start..].starts_with(string) {
-                                    temp_tokens.push(Token("keyword", &input[local_start..local_start + string.len()]));
+                                    temp_tokens.push(Token(
+                                        "keyword",
+                                        Content::Atomic(Position {
+                                            start: local_start,
+                                            end: local_start + string.len(),
+                                        }),
+                                    ));
                                     local_start += string.len();
+                                    score += 1;
                                 } else {
                                     continue 'options;
                                 }
@@ -208,12 +285,66 @@ impl<'a> Analyzer<'a> {
                     }
                 }
 
+                let position = Position {
+                    start: *start,
+                    end: local_start,
+                };
+
                 *start = local_start;
                 tokens.append(&mut temp_tokens);
-                return tokens;
+                return Token(rule, Content::Children(position, tokens));
             }
         }
 
-        return tokens;
+        if let Some((local_start, _, temp_tokens)) = candidates
+            .iter_mut()
+            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+        {
+            // se sabe que no es una regla interna, ni un string, omite desviaciones y
+            // escala hasta tener mayor informacion del error
+            if temp_tokens.len() > 1 {
+                errors.push(Error {
+                    message: "Syntax error",
+                    first: *start,
+                    last: *local_start,
+                });
+
+                let position = Position {
+                    start: *start,
+                    end: *local_start,
+                };
+                *start = *local_start;
+                tokens.append(temp_tokens);
+                return Token(rule, Content::Children(position, tokens));
+            }
+        }
+
+        let position = Position {
+            start: *start,
+            end: *start,
+        };
+        Token(rule, Content::Children(position, tokens))
+    }
+
+    pub fn visit<F>(&self, token: &Token, f: &mut F)
+    where
+        F: FnMut(&Token),
+    {
+        f(token);
+
+        if let Content::Children(_, children) = &token.1 {
+            for child in children {
+                self.visit(child, f);
+            }
+        }
+    }
+}
+
+impl<'a> Content<'a> {
+    pub fn value(&self, input: &'a str) -> &'a str {
+        match self {
+            Content::Children(position, _) => &input[position.start..position.end],
+            Content::Atomic(position) => &input[position.start..position.end],
+        }
     }
 }

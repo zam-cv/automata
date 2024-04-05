@@ -16,16 +16,15 @@ ident = ASCII_ALPHA ~ alphanumeric*
 number = ASCII_DIGIT ~ number*
 number* = ASCII_DIGIT ~ number* | EMPTY
 float = number ~ "." ~ number
-string = """ ~ ANY ~ """
 alphanumeric* = ASCII_ALPHANUMERIC ~ alphanumeric* | EMPTY
 algebraic_operators = "+" | "-" | "*" | "/"
 logical_operators = "<" | ">" | "==" | "!="
 
-{block} = "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}"
 block = block_instruction ~ WHITESPACE* ~ block | EMPTY
-block_instruction = instruction | return_keyword ~ WHITESPACE+ ~ expression ~ ";"
+return_value = return_keyword ~ WHITESPACE+ ~ expression ~ ";"
+block_instruction = statement | conditional | while | function | return_value | assignment | function_call ~ ";"
 
-value = float | number | string | function_call | ident
+value = float | number | function_call | ident
 
 (expression) = "(" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ")"
 expression = value ~ WHITESPACE* ~ expression* | (expression) ~ WHITESPACE* ~ expression*
@@ -34,9 +33,9 @@ expression* = algebraic_operators ~ WHITESPACE* ~ expression | logical_operators
 statement = var_keyword ~ WHITESPACE+ ~ ident ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ";"
 assignment = ident ~ WHITESPACE* ~ "=" ~ WHITESPACE* ~ expression ~ WHITESPACE* ~ ";"
 
-conditional = if_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ {block} ~ WHITESPACE* ~ else
-else = else_keyword ~ WHITESPACE* ~ {block} | EMPTY
-while = while_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ {block}
+conditional = if_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}" ~ WHITESPACE* ~ else
+else = else_keyword ~ WHITESPACE* ~ "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}" | EMPTY
+while = while_keyword ~ WHITESPACE* ~ (expression) ~ WHITESPACE* ~ "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}"
 
 (parameters) = "(" ~ WHITESPACE* ~ parameters ~ WHITESPACE* ~ ")"
 parameters = ident ~ WHITESPACE* ~ parameters* | EMPTY
@@ -46,5 +45,5 @@ parameters* = "," ~ WHITESPACE* ~ ident ~ parameters* | EMPTY
 arguments = expression ~ WHITESPACE* ~ arguments* | EMPTY
 arguments* = "," ~ WHITESPACE* ~ expression ~ arguments* | EMPTY
 
-function = function_keyword ~ WHITESPACE+ ~ ident ~ (parameters) ~ WHITESPACE* ~ {block}
+function = function_keyword ~ WHITESPACE+ ~ ident ~ (parameters) ~ WHITESPACE* ~ "{" ~ WHITESPACE* ~ block ~ WHITESPACE* ~ "}"
 function_call = ident ~ (arguments)

@@ -1,3 +1,4 @@
+use crate::parsed::Parsed;
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 
@@ -6,7 +7,6 @@ const EMPTY: &'static str = "EMPTY";
 const ASCII_DIGIT: &'static str = "ASCII_DIGIT";
 const ASCII_ALPHA: &'static str = "ASCII_ALPHA";
 const ASCII_ALPHANUMERIC: &'static str = "ASCII_ALPHANUMERIC";
-const ANY: &'static str = "ANY";
 const WHITESPACE: &'static str = "WHITESPACE";
 
 lazy_static! {
@@ -17,27 +17,14 @@ lazy_static! {
         map.insert(ASCII_ALPHANUMERIC, |s| {
             s.chars().all(|c| c.is_ascii_alphanumeric())
         });
-        map.insert(ANY, |s| s.chars().all(|c| c.is_ascii()));
         map.insert(WHITESPACE, |s| s.chars().all(|c| c.is_whitespace()));
         map.insert(EMPTY, |s| s.is_empty());
         map
     };
 }
 
-#[derive(Debug, Clone)]
-pub struct Position {
-    pub start: usize,
-    pub end: usize,
-}
-
-#[derive(Debug, Clone)]
-pub enum Content<'a> {
-    Children(Position, Vec<Token<'a>>),
-    Atomic(Position),
-}
-
-#[derive(Debug, Clone)]
-pub struct Token<'a>(pub &'a str, pub Content<'a>);
+#[derive(Debug)]
+pub struct Token<'a>(pub &'a str, pub ((usize, usize), Option<Vec<Token<'a>>>));
 
 #[derive(Debug)]
 pub struct Error<'a> {
@@ -155,34 +142,22 @@ impl<'a> Analyzer<'a> {
         Ok(())
     }
 
-    pub fn parser(&self, input: &'a str) -> (Token<'a>, Vec<Error<'a>>) {
+    pub fn parse(&self, input: &'a str) -> Parsed {
         let mut position = 0;
         let mut errors = Vec::new();
         let mut tokens = Vec::new();
 
         while position < input.len() {
-            let token = self.resursive_parser(self.initial_rule, &mut position, &mut errors, input);
+            let token = self.resursive_parse(self.initial_rule, &mut position, &mut errors, input);
 
             tokens.push(token);
             position += 1;
         }
 
-        (
-            Token(
-                ROOT,
-                Content::Children(
-                    Position {
-                        start: 0,
-                        end: input.len(),
-                    },
-                    tokens,
-                ),
-            ),
-            errors,
-        )
+        Parsed::new(input, Token(ROOT, ((0, input.len()), Some(tokens))), errors)
     }
 
-    fn resursive_parser(
+    fn resursive_parse(
         &self,
         rule: &'a str,
         start: &mut usize,
@@ -207,10 +182,7 @@ impl<'a> Analyzer<'a> {
 
                                 temp_tokens.push(Token(
                                     "string",
-                                    Content::Atomic(Position {
-                                        start: local_start - string.len(),
-                                        end: local_start,
-                                    }),
+                                    ((local_start - string.len(), local_start), None),
                                 ));
                             } else {
                                 candidates.push((
@@ -222,7 +194,7 @@ impl<'a> Analyzer<'a> {
                             }
                         }
                         Expression::Rule(r) => {
-                            let temp = self.resursive_parser(r, &mut local_start, errors, input);
+                            let temp = self.resursive_parse(r, &mut local_start, errors, input);
 
                             if local_start == *start {
                                 continue 'options;
@@ -255,13 +227,7 @@ impl<'a> Analyzer<'a> {
                                 continue 'options;
                             }
 
-                            temp_tokens.push(Token(
-                                "internal_rule",
-                                Content::Atomic(Position {
-                                    start: local_start,
-                                    end,
-                                }),
-                            ));
+                            temp_tokens.push(Token("internal_rule", ((local_start, end), None)));
                             local_start = end;
                             score += 1;
                         }
@@ -270,10 +236,7 @@ impl<'a> Analyzer<'a> {
                                 if input[local_start..].starts_with(string) {
                                     temp_tokens.push(Token(
                                         "keyword",
-                                        Content::Atomic(Position {
-                                            start: local_start,
-                                            end: local_start + string.len(),
-                                        }),
+                                        ((local_start, local_start + string.len()), None),
                                     ));
                                     local_start += string.len();
                                     score += 1;
@@ -285,14 +248,10 @@ impl<'a> Analyzer<'a> {
                     }
                 }
 
-                let position = Position {
-                    start: *start,
-                    end: local_start,
-                };
-
+                let position = (*start, local_start);
                 *start = local_start;
                 tokens.append(&mut temp_tokens);
-                return Token(rule, Content::Children(position, tokens));
+                return Token(rule, ((position.0, position.1), Some(tokens)));
             }
         }
 
@@ -309,42 +268,14 @@ impl<'a> Analyzer<'a> {
                     last: *local_start,
                 });
 
-                let position = Position {
-                    start: *start,
-                    end: *local_start,
-                };
+                let position = (*start, *local_start);
                 *start = *local_start;
                 tokens.append(temp_tokens);
-                return Token(rule, Content::Children(position, tokens));
+                return Token(rule, (position, Some(tokens)));
             }
         }
 
-        let position = Position {
-            start: *start,
-            end: *start,
-        };
-        Token(rule, Content::Children(position, tokens))
-    }
-
-    pub fn visit<F>(&self, token: &Token, f: &mut F)
-    where
-        F: FnMut(&Token),
-    {
-        f(token);
-
-        if let Content::Children(_, children) = &token.1 {
-            for child in children {
-                self.visit(child, f);
-            }
-        }
-    }
-}
-
-impl<'a> Content<'a> {
-    pub fn value(&self, input: &'a str) -> &'a str {
-        match self {
-            Content::Children(position, _) => &input[position.start..position.end],
-            Content::Atomic(position) => &input[position.start..position.end],
-        }
+        let position = (*start, *start);
+        Token(rule, (position, Some(tokens)))
     }
 }

@@ -1,7 +1,9 @@
-use analyzer::{Analyzer, Token};
+use analyzer::Analyzer;
 use std::fs;
 
 mod analyzer;
+mod parsed;
+
 const GRAMMAR: &'static str = include_str!("grammar.txt");
 
 fn main() -> anyhow::Result<()> {
@@ -9,11 +11,12 @@ fn main() -> anyhow::Result<()> {
     analyzer.validate()?;
 
     let input = fs::read_to_string("src/test.txt")?;
-    let response = analyzer.parser(&input);
+    let parsed = analyzer.parse(&input);
 
-    analyzer.visit(&response.0, &mut |Token(rule, others)| match *rule {
-        "ident" => {
-            println!("Ident: {}", others.value(&input));
+    // example
+    parsed.visit(&mut |chunk| match chunk.rule() {
+        "function" => {
+            println!("Function: {}", chunk.value());
         }
         _ => {}
     });

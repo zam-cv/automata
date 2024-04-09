@@ -23,6 +23,11 @@ where
         for child in children {
             recursive_visit(input, child, f);
         }
+    } else {
+        f(&Chunk {
+            input,
+            token
+        });
     }
 }
 

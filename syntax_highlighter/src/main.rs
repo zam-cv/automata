@@ -15,8 +15,10 @@ fn main() -> anyhow::Result<()> {
 
     // example
     parsed.visit(&mut |chunk| match chunk.rule() {
-        "function" => {
-            println!("Function: {}", chunk.value());
+        "string" => {
+            if chunk.value() == ";" {
+                println!("string: {}", chunk.value());
+            }
         }
         _ => {}
     });

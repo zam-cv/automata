@@ -1,0 +1,145 @@
+body {
+    margin: 0;
+    padding: 0;
+    padding-bottom: 263px; /* Altura del terminal + padding para asegurar espacio */
+    font-family: "Pixelify Sans", sans-serif;
+    background-color: rgb(14, 19, 27);
+    color: white;
+}
+
+
+
+
+h2 {
+    font-family: 'Consolas', 'Monaco';
+    color: white;
+    width: 110px;
+    font-size: 19px;
+    display: block;
+    text-align: center;
+}
+pre {
+    margin-right: 0px;
+    margin-top: -50px;
+    margin-left: 30px;
+    margin-bottom: 0px;
+}
+
+.terminal-text{
+    margin: 0;
+    padding: 0;
+}
+.editor {
+    counter-reset: line-numbering; /* Inicia un contador nuevo */
+    margin-left: 0px;
+    padding-left: 10px; /* Ajuste para asegurar que el espacio de los números de línea no solape el texto */
+    
+}
+.line::before {
+    content: counter(line-numbering); /* Muestra el contador */
+    position: absolute;
+    left: 0; /* Posición ajustada para alinear con el borde izquierdo del contenedor */
+    text-align: right;
+    width: 4ch; /* Usa 'ch' para definir el ancho basado en el ancho del carácter '0' */
+    margin-left: -4ch; /* Desplaza hacia la izquierda para no afectar el texto del código */
+    color: #759196; /* Color de los números de línea */
+    padding-right: 10px; /* Espacio entre los números de línea y el texto del código */
+}
+.line_error {
+    background-color: rgba(255, 0, 0, 0.5);
+    display: block; /* Hace que el elemento ocupe toda la línea */
+    height: 5px; /* Altura del rectángulo transparente */
+    width: 100%; 
+}
+
+
+
+.two-columns-container{
+    display: grid;
+    grid-template-columns: 80px auto;
+}
+.two-columns-window{
+
+    display: grid;
+    grid-template-columns: 40px 80px;
+    text-align: center;
+
+}
+
+.two-columns-window img{
+    margin-top: 30%;
+    margin-bottom: 70%;
+    margin-left: auto;
+    
+}
+.subrayable{
+    border-bottom: #44b9f4 solid 1px;
+    padding-bottom: 0px;
+    margin-bottom: 28px;
+
+}
+.iconito{
+    height: 30px;
+    width: auto;
+    color: white;
+    padding-right: 3px;
+}
+.ident{
+    color: #569cd6;
+}
+.algebraic_operators{
+    color: #06d433;
+}
+.keyword{
+    color: #9380ff;
+}
+.logical_operators , .white{
+    color: #ebebeb;
+}
+.number{
+    color: #d8513f;
+}
+.brackets{
+    color: #ddd42d;
+}
+.terminal{
+    background-color: rgb(14, 19, 27);
+    position: fixed; /* Mantiene el div fijo en la pantalla */
+    display: block;
+    bottom: 0; /* Posiciona el div en la parte inferior de la ventana del navegador */
+    height: 140px; /* Ajusta esta altura según el contenido de tu terminal */
+    width: 100%; /* Asegura que el terminal se extienda a lo ancho de la pantalla */
+    padding: 10px;
+    z-index: 1000; /* Un alto z-index para que se sitúe sobre otros elementos */
+}
+
+.three-rows-container{
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+}
+.editor-title{
+    display: grid;
+    grid-template-columns: 50px 50px 800px;
+    padding-left: 10%;
+    padding-right: 50%;
+}
+
+.junto{
+    display: absolute;
+    top: 20px;
+}
+
+.sidebar {
+    background-color: rgb(23, 28, 36);
+    text-align: center;
+}
+.code {
+    color: #797979d8;
+}
+
+.icon {
+    height: 42px;
+    width: auto;
+    padding-top: 14px;
+    color: white;
+}

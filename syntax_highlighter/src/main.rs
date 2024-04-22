@@ -14,6 +14,7 @@ fn main() -> anyhow::Result<()> {
 
     let input = fs::read_to_string("src/test.txt")?;
     let parsed = analyzer.parse(&input);
+    println!("{:?}", parsed.token);
 
     // abrir y leer un archivo para escribir.
     let mut html_content = fs::read_to_string("template/tem.html")?;
@@ -46,8 +47,11 @@ fn main() -> anyhow::Result<()> {
                     generated_content.push_str(&span);
                 }
                 _ => {}
-                
             }
+        },
+        "unknown" => {
+            let span = format!("<span class=\"unknown\">{}</span>", chuck.value());
+            generated_content.push_str(&span);
         },
         _ => {
             if generated_content.ends_with("<br>") || generated_content.is_empty() {

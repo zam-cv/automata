@@ -148,10 +148,18 @@ impl<'a> Analyzer<'a> {
         let mut tokens = Vec::new();
 
         while position < input.len() {
-            let token = self.resursive_parse(self.initial_rule, &mut position, &mut errors, input);
+            let mut tmp = position;
+            let mut token = self.resursive_parse(self.initial_rule, &mut tmp, &mut errors, input);
+
+            if tmp + 1 < input.len() {
+                if let Some(children) = &mut token.1 .1 {
+                    // se tiene que adaptar a la regla
+                    children.push(Token("unknown", ((tmp, tmp + 1), None)));
+                }    
+            }
 
             tokens.push(token);
-            position += 1;
+            position = tmp + 1;
         }
 
         Parsed::new(input, Token(ROOT, ((0, input.len()), Some(tokens))), errors)

@@ -10,6 +10,7 @@ const ASCII_ALPHANUMERIC: &'static str = "ASCII_ALPHANUMERIC";
 const WHITESPACE: &'static str = "WHITESPACE";
 
 lazy_static! {
+    // reglas internas que se pueden utilizar en la gramatica por simplicidad
     static ref INTERNAL_RULE: HashMap<&'static str, fn(&str) -> bool> = {
         let mut map: HashMap<&str, fn(&str) -> bool> = HashMap::new();
         map.insert(ASCII_DIGIT, |s| s.chars().all(|c| c.is_ascii_digit()));
@@ -50,7 +51,9 @@ impl<'a> Analyzer<'a> {
     pub fn new(grammar: &'a str, initial_rule: &'a str) -> anyhow::Result<Self> {
         let mut map = HashMap::new();
 
+        // se lee la gramatica y se almacena en un hashmap
         for (i, line) in grammar.lines().enumerate() {
+            // se ignora las lineas vacias que se usan para separar las reglas
             if line.is_empty() {
                 continue;
             }
@@ -67,6 +70,7 @@ impl<'a> Analyzer<'a> {
                         let component = component.trim();
 
                         if component.len() > 0 {
+                            // se valida si es un string, una regla, una regla interna o una keyword
                             if component.starts_with("\"") {
                                 expressions
                                     .push(Expression::String(&component[1..component.len() - 1]));
@@ -102,12 +106,14 @@ impl<'a> Analyzer<'a> {
         })
     }
 
+    // se usa en el desarrollo para validar la gramatica
     pub fn validate(&self) -> anyhow::Result<()> {
         let mut visited = HashSet::new();
 
         for (_, options) in self.grammar.iter() {
             for option in options {
                 for expression in option {
+                    // se valida que las reglas existan
                     match expression {
                         Expression::Rule(rule) | Expression::Keyword(rule) => {
                             visited.insert(rule);
@@ -128,10 +134,12 @@ impl<'a> Analyzer<'a> {
         }
 
         for rule in self.grammar.keys() {
+            // se valida que todas las reglas sean usadas
             if !visited.contains(rule) && rule != &self.initial_rule {
                 return Err(anyhow::anyhow!("Unused rule: {}", rule));
             }
 
+            // se valida que las reglas keyword tengan un solo string
             if rule.ends_with("_keyword")
                 && (self.grammar[rule].len() != 1 || self.grammar[rule][0].len() != 1)
             {
@@ -147,13 +155,16 @@ impl<'a> Analyzer<'a> {
         let mut errors = Vec::new();
         let mut tokens = Vec::new();
 
+        // iterar sobre el input, si no se ha llegado al final se intenta parsear lo demas
+        // nota: si no se llega al final del input, se asume que hay un error de sintaxis
         while position < input.len() {
             let mut tmp = position;
+            // se parsea el input
             let mut token = self.resursive_parse(self.initial_rule, &mut tmp, &mut errors, input);
 
             if tmp + 1 < input.len() {
                 if let Some(children) = &mut token.1 .1 {
-                    // se tiene que adaptar a la regla
+                    // se tiene que adaptar a la regla a la que probablemente pertenece
                     children.push(Token("unknown", ((tmp, tmp + 1), None)));
                 }    
             }
@@ -173,18 +184,24 @@ impl<'a> Analyzer<'a> {
         input: &'a str,
     ) -> Token<'a> {
         let mut tokens = Vec::new();
+        // se almacenan los candidatos por si alguna regla no se cumple
+        // y tomar al que tenga mayor score tenga
         let mut candidates = Vec::new();
 
         if let Some(options) = self.grammar.get(rule) {
+            // se itera sobre las opciones de la regla
             'options: for option in options {
                 let mut score = 0;
                 let mut local_start = *start;
                 let mut temp_tokens = Vec::new();
 
+                // se itera sobre las expresiones de la opcion
+                // Nota: las expresiones pueden ser strings, reglas, reglas internas o keywords
                 for expression in option {
                     match expression {
                         Expression::String(string) => {
                             if input[local_start..].starts_with(string) {
+                                // se avanza la posicion y se aumenta el score
                                 local_start += string.len();
                                 score += 1;
 
@@ -193,6 +210,7 @@ impl<'a> Analyzer<'a> {
                                     ((local_start - string.len(), local_start), None),
                                 ));
                             } else {
+                                // si no se cumple la regla se almacena como candidato
                                 candidates.push((
                                     local_start,
                                     score as f32 / option.len() as f32,
@@ -202,8 +220,10 @@ impl<'a> Analyzer<'a> {
                             }
                         }
                         Expression::Rule(r) => {
+                            // se llama recursivamente a la regla y se almacena el resultado
                             let temp = self.resursive_parse(r, &mut local_start, errors, input);
 
+                            // si no se cumple la regla va a la siguiente opcion
                             if local_start == *start {
                                 continue 'options;
                             }
@@ -212,6 +232,7 @@ impl<'a> Analyzer<'a> {
                             temp_tokens.push(temp);
                         }
                         Expression::InternalRule(rule) => {
+                            // se salta las reglas internas vacias
                             if rule == &EMPTY {
                                 continue;
                             }
@@ -256,6 +277,7 @@ impl<'a> Analyzer<'a> {
                     }
                 }
 
+                // se da la posicion del token y se almacena
                 let position = (*start, local_start);
                 *start = local_start;
                 tokens.append(&mut temp_tokens);
@@ -263,6 +285,7 @@ impl<'a> Analyzer<'a> {
             }
         }
 
+        // si ninguna regla se cumple se toma el candidato con mayor score
         if let Some((local_start, _, temp_tokens)) = candidates
             .iter_mut()
             .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
@@ -283,6 +306,7 @@ impl<'a> Analyzer<'a> {
             }
         }
 
+        // si no hay candidatos se asume que hay un error de sintaxis
         let position = (*start, *start);
         Token(rule, (position, Some(tokens)))
     }

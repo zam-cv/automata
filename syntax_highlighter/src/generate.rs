@@ -53,9 +53,9 @@ pub fn highlight_errors_in_html(errors: &[Error], html_content: &mut String, inp
     }
 }
 
-pub fn create_mark(analyzer: &Analyzer, entry: &DirEntry) {
+pub fn create_mark(analyzer: &Analyzer, entry: &DirEntry, template: &String) {
     let input_path = entry.path();
-    let input_filename = input_path.file_stem().unwrap().to_str().unwrap();
+    let input_filename = input_path.file_stem().unwrap().to_str().unwrap().to_string();
     let input = fs::read_to_string(&input_path).expect("Failed to read file");
 
     // Preprocesa el contenido para asegurarte de que todos los caracteres sean ASCII.
@@ -64,8 +64,7 @@ pub fn create_mark(analyzer: &Analyzer, entry: &DirEntry) {
     // Procesa el contenido del archivo de texto.
     let parsed = analyzer.parse(&preprocessed_input);
 
-    let mut html_content =
-        fs::read_to_string("template/tem.html").expect("Failed to read template");
+    let mut html_content = template.clone();
     let mut generated_content = format!("<span></span><br>1 ");
     let mut count = 1;
 

@@ -25,11 +25,13 @@ fn main() -> anyhow::Result<()> {
     let files_queue = get_files_queue()?;
     println!("Archivos encontrados: {}", files_queue.len());
 
+    let template = fs::read_to_string("template/tem.html")?;
+
     // Procesa cada archivo en la cola en paralelo.
-    // variants::parallel(files_queue, &analyzer);
+    variants::parallel(files_queue, &analyzer, &template);
 
     // Procesa cada archivo en la cola de forma secuencial.
-    variants::sequential(files_queue, &analyzer);
+    // variants::sequential(files_queue, &analyzer, &template);
 
     // Detiene el temporizador y calcula la duración.
     let duration = start_time.elapsed();

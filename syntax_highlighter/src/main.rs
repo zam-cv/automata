@@ -20,7 +20,8 @@ fn main() -> anyhow::Result<()> {
 
     // Llama a la función que procesa los archivos en la cola.
     let files_queue = get_files_queue()?;
-    println!("Archivos encontrados: {}", files_queue.len());
+    let n = 1000;
+    println!("Archivos encontrados: {}", n);
 
     let template = fs::read_to_string("template/tem.html")?;
 
@@ -28,10 +29,10 @@ fn main() -> anyhow::Result<()> {
     let start_time = Instant::now();
 
     // Procesa cada archivo en la cola en paralelo.
-    // variants::parallel(files_queue, &analyzer, &template);
+    variants::parallel(files_queue, &analyzer, &template, n);
 
     // Procesa cada archivo en la cola de forma secuencial.
-    variants::sequential(files_queue, &analyzer, &template);
+    // variants::sequential(files_queue, &analyzer, &template, n);
 
     // Detiene el temporizador y calcula la duración.
     let duration = start_time.elapsed();

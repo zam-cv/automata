@@ -14,9 +14,6 @@ const GRAMMAR: &'static str = include_str!("grammar.txt");
 
 // La función main dirige el flujo principal de ejecución del programa.
 fn main() -> anyhow::Result<()> {
-    // Inicia el temporizador.
-    let start_time = Instant::now();
-
     // Crea una instancia del analizador con la gramática y la regla inicial.
     let analyzer = Analyzer::new(GRAMMAR, "program")?;
     analyzer.validate()?;
@@ -27,11 +24,14 @@ fn main() -> anyhow::Result<()> {
 
     let template = fs::read_to_string("template/tem.html")?;
 
+    // Inicia el temporizador.
+    let start_time = Instant::now();
+
     // Procesa cada archivo en la cola en paralelo.
-    variants::parallel(files_queue, &analyzer, &template);
+    // variants::parallel(files_queue, &analyzer, &template);
 
     // Procesa cada archivo en la cola de forma secuencial.
-    // variants::sequential(files_queue, &analyzer, &template);
+    variants::sequential(files_queue, &analyzer, &template);
 
     // Detiene el temporizador y calcula la duración.
     let duration = start_time.elapsed();

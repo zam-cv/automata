@@ -23,7 +23,7 @@ fn main() -> anyhow::Result<()> {
     let n = 1000;
     println!("Archivos encontrados: {}", n);
 
-    let template = fs::read_to_string("template/tem.html")?;
+    let template = fs::read_to_string("src/template.html")?;
 
     // Inicia el temporizador.
     let start_time = Instant::now();
